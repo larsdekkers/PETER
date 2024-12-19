@@ -37,16 +37,16 @@ def DataStore() :
     'put data into a json file'
     datafile['timesrun'] = datafile['timesrun'] + 1
     datafile['colors'] = colors
-    colorNames = {}
-    itemnumber = 0
-    for inputBox in Widgetmanager.widgets :#for all inputboxes
-        if type(inputBox[1]).__name__ == "InputBox" :
-            colorNames[str(itemnumber)] = inputBox[1].text
-            itemnumber += 1
+
     
     datafile["colorNames"] = colorNames
     datafile['map'] = roomMap
-    
+
+    itemnumber = 0
+    for inputBox in Widgetmanager.widgets :#for all inputboxes
+        if type(inputBox[1]).__name__ == "InputBox" :
+            colorNames[str(SelectedColorTextboxes[itemnumber])] = inputBox[1].text
+            itemnumber += 1
             
     with open(jsonName, "w") as outfile : # save the json with updated info
         json.dump(datafile, outfile)
@@ -70,11 +70,6 @@ def Initialisemap() :
     for colorNumber in range(len(colors)-2) :
         colorNumber += 2
         colorNames[f"{colorNumber}"] = ""
-    print(colorNames)    
-    textbox1.text = colorNames["0"]
-    textbox2.text = colorNames["1"]
-    textbox3.text = ""
-    textbox4.text = ""
 
 def PixelToSquare(x : int,y : int)  -> tuple:
     "converts pixelcoordinates to coordinates on the map"
@@ -120,35 +115,48 @@ def ChangeSelectedColor(color) :
     canvas.DrawRect(colorRect, colors[f"{color}"])
 
 def ChangeColorItemLower(text) :
-    ChangeColorItem(False, text)
+    ChangeItemTextbox(False, text)
 
 def ChangeColorItemHigher(text) :
-    ChangeColorItem(True, text)
+    ChangeItemTextbox(True, text)
 
-def ChangeColorItem(state : bool, text) :
+def ChangeItemTextbox(state : bool, text) :
+    "changes the item of the textboxes when clicked on them"
     textboxnumber = len(text)
     if textboxnumber == 0 :
-        textbox = textbox1Color
+        textboxcolor = textbox1Color
+        textbox = textbox1
     elif textboxnumber == 1 :
-        textbox = textbox2Color
+        textboxcolor = textbox2Color
+        textbox = textbox2
     elif textboxnumber == 2 :
-        textbox = textbox3Color
+        textboxcolor = textbox3Color
+        textbox = textbox3
     elif textboxnumber == 3 :
-        textbox = textbox4Color
-    color = textbox.color
-    index = int(list(colors.keys())[list(colors.values()).index(color)])
+        textboxcolor = textbox4Color
+        textbox = textbox4
+    color = textboxcolor.color # get the color of the textbox
+    index = int(list(colors.keys())[list(colors.values()).index(color)]) # find the colorindex
     
-    if state == True :
-        color = min(index +1,len(colors)-1)
+    if state == False :
+        color = min(index +1,len(colors)-1) # make sure it cant go above or under the amount of colors
     else :
         color = max(index-1, 0)
+
+    textboxcolor.color = colors[str(color)] # change the color in the widget
+    textboxcolor.ClickColorChange() #draw the actual color
+    colorNames[str(SelectedColorTextboxes[textboxnumber]) ] = textbox.text # change the name in the list of names
+
+    SelectedColorTextboxes[textboxnumber] = color # set the selected color in a list to check eazier later
+
+    textbox.text = colorNames[f"{color}"] #change the textbox to have the correct text
+    textbox.Clicked(False) # deselect and update the textbox
     
-    textbox.color = colors[str(color)]
-    textbox.ClickColorChange()
+    
 
     
-
 Dataread()
+#Initialisemap()
 canvas = drawmap.CanvasMap((canvasWidth, canvasHeight), roomSize, squaresize, colors, roomMap) # the canvas
 canvas.DrawFullMap()
 resetButton = Widgetmanager.Button((canvasWidth-50,canvasHeight-50), (50,50), (255,0,0), canvas, ResetMap, "reset")
@@ -157,15 +165,17 @@ colorRect = pygame.Rect(canvasWidth-50, 0, 50, 50) # the rectangle that shows th
 canvas.DrawRect(colorRect, colors[f"{selectedColor}"]) # drawing the color
 canvas.DrawText("use + and - to draw different colors", (canvasWidth//2-180, roomSize[1]+25), (255,255,255)) # drawing text with instructions
 
-textbox1 = Widgetmanager.InputBox((30, canvasHeight-80), (150,30), canvas, 13, colorNames["0"])
+textbox1 = Widgetmanager.InputBox((30, canvasHeight-80), (150,30), canvas, 13, colorNames["0"]) # all textboxes for handeling items
 textbox2 = Widgetmanager.InputBox((30, canvasHeight-40), (150,30), canvas, 13, colorNames["1"])
-textbox3 = Widgetmanager.InputBox((270, canvasHeight-80), (150,30), canvas, 13)
-textbox4 = Widgetmanager.InputBox((270, canvasHeight-40), (150,30), canvas, 13)
+textbox3 = Widgetmanager.InputBox((270, canvasHeight-80), (150,30), canvas, 13, colorNames["2"])
+textbox4 = Widgetmanager.InputBox((270, canvasHeight-40), (150,30), canvas, 13, colorNames["3"])
 
-textbox1Color = Widgetmanager.Button((180,canvasHeight-80), (30,30), colors["0"], canvas, ChangeColorItemLower, "", ChangeColorItemHigher, True)
-textbox2Color = Widgetmanager.Button((180,canvasHeight-40), (30,30), colors["1"], canvas, ChangeColorItemLower, " ", ChangeColorItemHigher, True)
+textbox1Color = Widgetmanager.Button((180,canvasHeight-80), (30,30), colors["0"], canvas, ChangeColorItemLower, "", ChangeColorItemHigher, True) # all colors next to the textboxes for items
+textbox2Color = Widgetmanager.Button((180,canvasHeight-40), (30,30), colors["1"], canvas, ChangeColorItemLower, " ", ChangeColorItemHigher, True) # text is for checking the corresponding textbox
 textbox3Color = Widgetmanager.Button((420,canvasHeight-80), (30,30), colors["2"], canvas, ChangeColorItemLower, "  ", ChangeColorItemHigher, True)
 textbox4Color = Widgetmanager.Button((420,canvasHeight-40), (30,30), colors["3"], canvas, ChangeColorItemLower, "   ", ChangeColorItemHigher, True)
+
+SelectedColorTextboxes = [0,1,2,3]
 while running :
     pygame.display.update()
     for event in pygame.event.get():
@@ -184,4 +194,5 @@ while running :
     
     pygame.time.Clock().tick(30) # limit the fps to 30 to decrease pc load
 DataStore() # save all changes
+print(colorNames)
  
