@@ -3,6 +3,7 @@ import json # for storing data between uses
 import drawmap # module for plotting on the pycanvas
 import ImageConverter # module for creating a list of colors from a png/jpg
 import Widgetmanager # module for eazy creation of widgets
+import PeterNav
 
 pygame.init()
 
@@ -87,6 +88,7 @@ def MouseDown(mousebutton) :
     x,y = pygame.mouse.get_pos() # get the position of the mouse
     if x <= roomSize[0] and y <= roomSize[1] : # if the mouse is on the map
         xsquare, ysquare = PixelToSquare(x,y) # convert to a position in the grid
+        navigation.GoTo((xsquare,ysquare))
         ChangeMap(selectedColor, (xsquare,ysquare)) # change the squares value
 
     Widgetmanager.CheckForClick(x,y, mousebutton) # checks all widgets for clicks
@@ -122,7 +124,7 @@ def ChangeColorItemHigher(text) :
 
 def ChangeItemTextbox(state : bool, text) :
     "changes the item of the textboxes when clicked on them"
-    textboxnumber = len(text)
+    textboxnumber = len(text) # this indicates what textbox to use
     if textboxnumber == 0 :
         textboxcolor = textbox1Color
         textbox = textbox1
@@ -152,11 +154,8 @@ def ChangeItemTextbox(state : bool, text) :
     textbox.text = colorNames[f"{color}"] #change the textbox to have the correct text
     textbox.Clicked(False) # deselect and update the textbox
     
-    
-
-    
 Dataread()
-#Initialisemap()
+Initialisemap()
 canvas = drawmap.CanvasMap((canvasWidth, canvasHeight), roomSize, squaresize, colors, roomMap) # the canvas
 canvas.DrawFullMap()
 resetButton = Widgetmanager.Button((canvasWidth-50,canvasHeight-50), (50,50), (255,0,0), canvas, ResetMap, "reset")
@@ -174,6 +173,9 @@ textbox1Color = Widgetmanager.Button((180,canvasHeight-80), (30,30), colors["0"]
 textbox2Color = Widgetmanager.Button((180,canvasHeight-40), (30,30), colors["1"], canvas, ChangeColorItemLower, " ", ChangeColorItemHigher, True) # text is for checking the corresponding textbox
 textbox3Color = Widgetmanager.Button((420,canvasHeight-80), (30,30), colors["2"], canvas, ChangeColorItemLower, "  ", ChangeColorItemHigher, True)
 textbox4Color = Widgetmanager.Button((420,canvasHeight-40), (30,30), colors["3"], canvas, ChangeColorItemLower, "   ", ChangeColorItemHigher, True)
+
+navigation = PeterNav.Navigation(roomMap, [2,48], 0, ChangeMap)
+ChangeMap(7,(2,48))
 
 SelectedColorTextboxes = [0,1,2,3]
 while running :
