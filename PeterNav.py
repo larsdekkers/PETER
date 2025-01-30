@@ -1,4 +1,5 @@
 import math
+import pygame
 import ArduinoTalk
 class Navigation :
     def __init__(self, mapCanvas : list, startPosition : tuple, startAngle : int, canvas):
@@ -50,11 +51,14 @@ class Navigation :
                                 if checkedPositions[item][0] == position and checkedPositions[item][1] == nextDistance : #get the first ocurrance of the next distance that is borderd to the last point
                                     lastPosition = checkedPositions[item][0] # set the new old node for the next iteration
                                     route.append(lastPosition)
-                                    self.canvas(2, (lastPosition[0], lastPosition[1])) #display on canvas
+                                    self.mapCanvas[lastPosition[0]][lastPosition[1]] = 2 #change the map list 
+                                    
                                     break
                             if position == lastPosition : #if the position is the destination then stop
                                 break
                     route.reverse() #make the route the correct order
+                    self.canvas.DrawFullMap()
+                    pygame.display.update()
                     return route
                          
                 for side in range(sides) : # get all positions around the current position
@@ -99,11 +103,42 @@ class Navigation :
                     directions = GetRoute()
             return directions
         
-        def SendDirection(route) :
+        def CreateInstructions(route) :
+            instructions = []
+            lastposition = self.position
             for item in route :
+                xchange = item[0] - lastposition[0]
+                ychange = item[1] - lastposition[1]
+
+                if xchange == 1 :
+                    instructions.append("right")
+                elif ychange == 1 :
+                    instructions.append("up")
+                elif xchange == -1 :
+                    instructions.append("left")
+                elif ychange == -1 :
+                    instructions.append("down")
+                lastposition = item
+            return instructions
+            
+        def SendInstructions(instructions) :
+            for item in instructions :
+                ArduinoTalk.Write("1") # check if no breaks or errors have occured
+                response = ArduinoTalk.Read()
+                print(response, "read")
+                if response != "0" :
+                    break
                 ArduinoTalk.Write(item)
+                print(item)
+                response = ArduinoTalk.Read()
+                if response == "done" :
+                    continue    
+
+
+
         route = FindDirection(currentPosition)
-        SendDirection(route)
+        instructions = CreateInstructions(route)
+        SendInstructions(instructions)
 
 
 
