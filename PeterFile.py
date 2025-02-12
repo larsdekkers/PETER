@@ -1,9 +1,9 @@
 import pygame #for handeling most inputs and the window
-import json # for storing data between uses
 import drawmap # module for plotting on the pycanvas
 import ImageConverter # module for creating a list of colors from a png/jpg
 import Widgetmanager # module for eazy creation of widgets
 import PeterNav
+import JsonHandeler
 
 pygame.init()
 
@@ -11,13 +11,16 @@ canvasWidth : int = 600
 canvasHeight : int = 680
 
 jsonName = "test.json"
-image = "testwinkel.png"
+image = 'C:/Users/2007080801/OneDrive - Rodenborch College/Math/Peter/testwinkel.png'
 running = True
 selectedColor = 0
 roomSize = [0,0]
+peterPos = [20,48]
 datafile = {}
 
-def Dataread() :
+json = JsonHandeler.Json(jsonName)
+
+def Dataread() -> None:
     'get all data out of a jsonfile'
     global colors
     global datafile
@@ -25,19 +28,21 @@ def Dataread() :
     global roomSize
     global squaresize
     global colorNames
-    with open(jsonName) as fp: #open the jsonfile
-        datafile = json.load(fp)
+    global peterPos
+    datafile = json.Open()
     colors = datafile['colors'] #get the colors
     roomMap = datafile['map']
     squaresize = (canvasWidth - 50)//len(roomMap[0])
     roomSize[0] = len(roomMap)*squaresize
     roomSize[1] = len(roomMap[0])*squaresize
     colorNames = datafile["colorNames"]
+    peterPos = datafile['peterLocation']
 
-def DataStore() :
+def DataStore() -> None:
     'put data into a json file'
     datafile['timesrun'] = datafile['timesrun'] + 1
     datafile['colors'] = colors
+    datafile['peterLocation'] = navigation.position
 
     
     datafile["colorNames"] = colorNames
@@ -48,11 +53,11 @@ def DataStore() :
         if type(inputBox[1]).__name__ == "InputBox" :
             colorNames[str(SelectedColorTextboxes[itemnumber])] = inputBox[1].text
             itemnumber += 1
+    json.Store(datafile)
             
-    with open(jsonName, "w") as outfile : # save the json with updated info
-        json.dump(datafile, outfile)
+ 
 
-def Initialisemap() :
+def Initialisemap() -> None:
     "only run when resetting the map to the original image"
     global roomMap
     global roomSize
@@ -60,6 +65,11 @@ def Initialisemap() :
     global squaresize
     global colorNames
     global datafile
+    global navigation
+    global canvas
+    global peterPos
+    
+
     roomMap = ImageConverter.Load(image)
     colors = ImageConverter.Colors
     squaresize = (canvasWidth - 50)//len(roomMap[0])
@@ -68,22 +78,24 @@ def Initialisemap() :
     colorNames = {} 
     colorNames["0"] = "wall"
     colorNames["1"] = "path"
-    for colorNumber in range(len(colors)-2) :
-        colorNumber += 2
+    colorNames["2"] = "route"
+    peterPos  = [20,48]
+    for colorNumber in range(len(colors)-3) :
+        colorNumber += 3
         colorNames[f"{colorNumber}"] = ""
 
-def PixelToSquare(x : int,y : int)  -> tuple:
+def PixelToSquare(x : int,y : int) -> tuple:
     "converts pixelcoordinates to coordinates on the map"
     xsquare = x//squaresize
     ysquare = y//squaresize
     return xsquare, ysquare
 
-def ChangeMap(item : int, coords : tuple) :
+def ChangeMap(item : int, coords : tuple) -> None:
     "change a squares value"
     roomMap[coords[0]][coords[1]] = item #change the map list 
     canvas.DrawSquare(coords[0], coords[1]) # draw the new square
 
-def MouseDown(mousebutton) :
+def MouseDown(mousebutton) -> None:
     "all events to happen when mousebutton 1 is down"
     x,y = pygame.mouse.get_pos() # get the position of the mouse
     if x <= roomSize[0] and y <= roomSize[1] : # if the mouse is on the map
@@ -93,7 +105,7 @@ def MouseDown(mousebutton) :
 
     Widgetmanager.CheckForClick(x,y, mousebutton) # checks all widgets for clicks
 
-def KeyDown(event) :
+def KeyDown(event) -> None:
     letter = event.unicode
     if Widgetmanager.textboxActive == True :
         Widgetmanager.TextInput(letter)
@@ -102,13 +114,15 @@ def KeyDown(event) :
     elif letter == "-" :
         ChangeSelectedColor(selectedColor-1)
 
-def ResetMap() :
+def ResetMap() -> None:
     "resets the map back to the original image"
     Initialisemap()
     canvas.mapvalues = roomMap
+    navigation.mapCanvas = roomMap
+    navigation.position = peterPos
     canvas.DrawFullMap()
 
-def ChangeSelectedColor(color) :
+def ChangeSelectedColor(color) -> None:
     "changes the selected color and displays it on the canvas"
     global selectedColor
     color = max(color, 0) # make sure it cant go below 0
@@ -116,13 +130,13 @@ def ChangeSelectedColor(color) :
     selectedColor = color
     canvas.DrawRect(colorRect, colors[f"{color}"])
 
-def ChangeColorItemLower(text) :
+def ChangeColorItemLower(text) -> None:
     ChangeItemTextbox(False, text)
 
-def ChangeColorItemHigher(text) :
+def ChangeColorItemHigher(text) -> None:
     ChangeItemTextbox(True, text)
 
-def ChangeItemTextbox(state : bool, text) :
+def ChangeItemTextbox(state : bool, text) -> None:
     "changes the item of the textboxes when clicked on them"
     textboxnumber = len(text) # this indicates what textbox to use
     if textboxnumber == 0 :
@@ -155,8 +169,10 @@ def ChangeItemTextbox(state : bool, text) :
     textbox.Clicked(False) # deselect and update the textbox
     
 Dataread()
-Initialisemap()
+#Initialisemap()
 canvas = drawmap.CanvasMap((canvasWidth, canvasHeight), roomSize, squaresize, colors, roomMap) # the canvas
+navigation = PeterNav.Navigation(roomMap, peterPos, 0, canvas)
+ChangeMap(0, peterPos)
 canvas.DrawFullMap()
 resetButton = Widgetmanager.Button((canvasWidth-50,canvasHeight-50), (50,50), (255,0,0), canvas, ResetMap, "reset")
 colorRect = pygame.Rect(canvasWidth-50, 0, 50, 50) # the rectangle that shows the selected color
@@ -174,27 +190,26 @@ textbox2Color = Widgetmanager.Button((180,canvasHeight-40), (30,30), colors["1"]
 textbox3Color = Widgetmanager.Button((420,canvasHeight-80), (30,30), colors["2"], canvas, ChangeColorItemLower, "  ", ChangeColorItemHigher, True)
 textbox4Color = Widgetmanager.Button((420,canvasHeight-40), (30,30), colors["3"], canvas, ChangeColorItemLower, "   ", ChangeColorItemHigher, True)
 
-navigation = PeterNav.Navigation(roomMap, [2,48], 0, ChangeMap)
-ChangeMap(7,(2,48))
+
 
 SelectedColorTextboxes = [0,1,2,3]
 while running :
-    pygame.display.update()
-    for event in pygame.event.get():
-        #check if the red cross has been clicked
-        if event.type == pygame.QUIT:
-            running = False
-        
-        #check all mouse inputs
-        elif event.type == pygame.MOUSEBUTTONDOWN :
-            if pygame.mouse.get_pressed(num_buttons=3)[0] == True or pygame.mouse.get_pressed(num_buttons=3)[2] == True : # check if the left mouse button has been pressed
-                MouseDown(pygame.mouse.get_pressed(num_buttons=3).index(True)+1)
-        
-        #check all keyboard inputs        
-        elif event.type == pygame.KEYDOWN :
-            KeyDown(event)
-    
-    pygame.time.Clock().tick(30) # limit the fps to 30 to decrease pc load
+    event = canvas.UpdateScreen()
+    if event == None :
+        continue
+    print(event.type)
+    if event.type == 32787:
+        running = False
+
+    #check all mouse inputs
+    elif event.type == pygame.MOUSEBUTTONDOWN :
+        if pygame.mouse.get_pressed(num_buttons=3)[0] == True or pygame.mouse.get_pressed(num_buttons=3)[2] == True : # check if the left mouse button has been pressed
+            MouseDown(pygame.mouse.get_pressed(num_buttons=3).index(True)+1)
+
+    #check all keyboard inputs        
+    elif event.type == pygame.KEYDOWN :
+        KeyDown(event)
+
 DataStore() # save all changes
-print(colorNames)
+
  

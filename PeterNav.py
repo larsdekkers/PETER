@@ -1,22 +1,33 @@
 import math
 import pygame
-import ArduinoTalk
+
+test = False
+if test == False :
+    import ArduinoTalk
 class Navigation :
-    def __init__(self, mapCanvas : list, startPosition : tuple, startAngle : int, canvas):
-        self.mapCanvas : list = mapCanvas
-        self.position : tuple = startPosition
-        self.angle : int = startAngle
-        self.canvas = canvas
+    def __init__(self, mapCanvas : list, startPosition : tuple, startAngle : int, canvas) -> None:
+        self.mapCanvas : list = mapCanvas #the map
+        self.position : list = list(startPosition) #current position
+        self.angle : int = startAngle #orientation
+        self.canvas = canvas #for drawing on the canvas
+        self.lastDrawnPos = self.position
+        
     
-    def GoTo(self, coords : tuple) :
+    def GoTo(self, coords : tuple) -> None:
+        "moves peter to a point on the map"
         currentPosition = self.position 
         endPosition = coords
         sides = 4 # amount of sides peter can drive, for now hardcoded to 4 for simplification (right, up, left, down)
-        def FindDirection(startPosition : tuple):
+        def FindDirection(startPosition : tuple) -> list:
+            "makes the route from a to b"
             checkedPositions = [[startPosition, 0]]
             times = 0
             again = True
             while again :
+                if times >= len(checkedPositions) :
+                    print("No route could be found")
+                    directions = None
+                    break
                 position = checkedPositions[times][0]
                 oldDistance = checkedPositions[times][1] # take the amount of steps it took to get to that node
                 possibleDirections = []
@@ -52,9 +63,9 @@ class Navigation :
                                     lastPosition = checkedPositions[item][0] # set the new old node for the next iteration
                                     route.append(lastPosition)
                                     self.mapCanvas[lastPosition[0]][lastPosition[1]] = 2 #change the map list 
-                                    
                                     break
                             if position == lastPosition : #if the position is the destination then stop
+                                self.mapCanvas[endPosition[0]][endPosition[1]] = 2 # add the destination too
                                 break
                     route.reverse() #make the route the correct order
                     self.canvas.DrawFullMap()
@@ -73,11 +84,6 @@ class Navigation :
                     if  nextPosition[0] >= 0 and nextPosition[1] >= 0 and nextPosition[0] < len(self.mapCanvas[0]) and nextPosition[1] < len(self.mapCanvas): #check if the position is in bounds
                         if self.mapCanvas[nextPosition[0]][nextPosition[1]] == 1 or self.mapCanvas[nextPosition[0]][nextPosition[1]] == 2 : #check if the position is in bounds
                             possibleDirections.append(nextPosition)
-                
-                
-                # if len(possibleDirections) >= 3 :
-                #     furthestDistanceIndex = EstimateFurthestSide(possibleDirections, endPosition)
-                #     possibleDirections.pop(furthestDistanceIndex) #dont add the furthest one
 
                 if len(possibleDirections) >= 2 : # if there are 2 or more directions left remove 1
                     furthestDistanceIndex = EstimateFurthestSide(possibleDirections, endPosition)
@@ -103,44 +109,125 @@ class Navigation :
                     directions = GetRoute()
             return directions
         
-        def CreateInstructions(route) :
+        def CreateInstructions(route) -> list:
+            'create the final instructions to send to peter'
+            rotation = 0
             instructions = []
+            changes = []
             lastposition = self.position
+
+            itemnumber = 0
             for item in route :
+                itemnumber += 1
                 xchange = item[0] - lastposition[0]
                 ychange = item[1] - lastposition[1]
+                changes.append([xchange, ychange]) #for the later use to make instructions
+                if xchange == 1 : #right
+                    if rotation == 0 :
+                        instructions.append("right")
+                    elif rotation == 90 :
+                        instructions.append("forward")
+                    elif rotation == 180 :
+                        instructions.append("left")
+                    elif rotation == 270 :
+                        instructions.append("backward")
+                    rotation = 90
 
-                if xchange == 1 :
-                    instructions.append("right")
-                elif ychange == 1 :
-                    instructions.append("up")
-                elif xchange == -1 :
-                    instructions.append("left")
-                elif ychange == -1 :
-                    instructions.append("down")
+                elif ychange == 1 : #down
+                    if rotation == 0 :
+                        instructions.append("backward")
+                    elif rotation == 90 :
+                        instructions.append("right")
+                    elif rotation == 180 :
+                        instructions.append("forward")
+                    elif rotation == 270 :
+                        instructions.append("left")
+                    rotation = 180
+
+                elif xchange == -1 : #left
+                    if rotation == 0 :
+                        instructions.append("left")
+                    elif rotation == 90 :
+                        instructions.append("backward")
+                    elif rotation == 180 :
+                        instructions.append("right")
+                    elif rotation == 270 :
+                        instructions.append("forward")
+                    rotation = 270
+
+                elif ychange == -1 : #up
+                    if rotation == 0 :
+                        instructions.append("forward")
+                    elif rotation == 90 :
+                        instructions.append("left")
+                    elif rotation == 180 :
+                        instructions.append("backward")
+                    elif rotation == 270 :
+                        instructions.append("right")
+                    rotation = 0
                 lastposition = item
-            return instructions
+            instructions.append("0") #append the final stop
+            print(instructions)
+            return instructions, changes
             
-        def SendInstructions(instructions) :
+        def SendInstructions(instructions) -> None:
+            "sends the instructions to the arduino and updates the map to where peter is"
+            index = 0
+            if test == False :
+                ArduinoTalk.Write("reset") # reset any posible errors
             for item in instructions :
-                ArduinoTalk.Write("1") # check if no breaks or errors have occured
-                response = ArduinoTalk.Read()
-                print(response, "read")
-                if response != "0" :
+                if test == False :  # check if no breaks or errors have occured
+                    ArduinoTalk.Write("1")
+                    response = ArduinoTalk.Read()
+                else :
+                    response = "0"
+            
+                if response != "0" : # if the response gives an error stop everything
+                    self.DrawPeter()
+                    print("arduino error: the arduino has given an error, something might be too close")
                     break
-                ArduinoTalk.Write(item)
+
                 print(item)
-                response = ArduinoTalk.Read()
-                if response == "done" :
-                    continue    
+                if test == False : #send the instruction and wait for reaction
+                    ArduinoTalk.Write(item)
+                    response = ArduinoTalk.Read()
+                else :
+                    pygame.time.wait(1000)
+                    response = "done"
+                
+                if response != "done" : #if the response is wrong give an error
+                    print("response error: either conection got lost or messed up")
+                    break
+                if item == "0" : #this will always be the last item, to stop
+                    continue
+                self.position = route[index]
+                self.DrawPeter()
 
 
+                match changes[index] : # set the angle of peter to match the one on the map
+                    case [1,0] :
+                        self.angle = 90
+                    case [0,1] :
+                        self.angle = 0
+                    case [-1,0] :
+                        self.angle = 270
+                    case [0,-1] :
+                        self.angle = 180
+                index += 1
 
         route = FindDirection(currentPosition)
-        instructions = CreateInstructions(route)
-        SendInstructions(instructions)
+        if route != None : #check if no errors have orrured in the route making
+            instructions, changes = CreateInstructions(route)
+            SendInstructions(instructions)
 
+    def DrawPeter(self) -> None:
+        position = self.position
+        self.mapCanvas[position[0]][position[1]] = 0
+        self.mapCanvas[self.lastDrawnPos[0]][self.lastDrawnPos[1]] = 1
+        self.canvas.DrawSquare(position[0], position[1])
+        self.canvas.DrawSquare(self.lastDrawnPos[0], self.lastDrawnPos[1])
 
-
+        self.lastDrawnPos = position
+        self.canvas.UpdateScreen()
 
 

@@ -18,6 +18,7 @@ class CanvasMap() :
         self.mapvalues : list = mapvalues #a nested list with all the values of the map
         
         self.canvas = pygame.display.set_mode((canvaswidth, canvasheight)) # initialise the canvas
+        self.canvas.fill((30,30,30)) #set the backgroundcolor
         
         self.totalWidth = self.roomwidth//self.tilesize # calculate the amount of squares in the x direction
         self.totalLength = self.roomheight//self.tilesize # calculate the amount of squares in the y direction
@@ -27,7 +28,7 @@ class CanvasMap() :
         "draws a square of the map on screen"
         pygame.draw.rect(self.canvas, self.colors[str(int(self.mapvalues[xcoord][ycoord]))], (xcoord*self.tilesize, ycoord*self.tilesize, self.tilesize, self.tilesize)) #draw the square on the canvas
     
-    def DrawRect(self, rect, color : tuple) -> None:
+    def DrawRect(self, rect : object, color : tuple) -> None:
         "draws a rectangle on screen"
         pygame.draw.rect(self.canvas, color, rect)
 
@@ -46,5 +47,11 @@ class CanvasMap() :
             ycoord = (i//self.totalWidth) #get the ycoordinate
             self.DrawSquare(xcoord, ycoord)
     
-            
+    def UpdateScreen(self) -> object:
+        pygame.display.update()
+        for event in pygame.event.get():
+            pygame.time.Clock().tick(30) # limit the fps to 30 to decrease pc load
+            return event
+
+
         
