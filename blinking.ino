@@ -10,8 +10,8 @@ int sensOut = 5;
 int sensIn = 6;
 int error = 0;
 
-int rotateTime = 100;
-int moveTime = 100;
+int rotateTime = 1000;
+int moveTime = 1000;
 float duration, distance;
 void setup() {
   // put your setup code here, to run once:
@@ -19,6 +19,9 @@ void setup() {
   pinMode(motor1, OUTPUT);
   pinMode(motor1L, OUTPUT);
   pinMode(motor1R, OUTPUT);
+  pinMode(motor2, OUTPUT);
+  pinMode(motor2L, OUTPUT);
+  pinMode(motor2R, OUTPUT);
   pinMode(sensOut, OUTPUT);
   pinMode(sensIn, INPUT);
   Serial.begin(9600);
@@ -33,22 +36,55 @@ void loop() {
  
  duration = pulseIn(sensIn, HIGH);
  distance = (duration*0.0343)/2; //speed of sound in cm/microSec
- if (distance < 1000) { 
-  Serial.println(distance);
-  if (distance < 20) {
-    analogWrite(motor1, 0);
+ if (distance < 1000) {
+  if (distance < 30) {
+    Stop();
+    error = 1;
   }
  }
  delay(100);
 }
 
+void ControlMotors(int motorNumber, int speed) {
+  if (motorNumber == 1) {
+    if (speed == 0) {
+      analogWrite(motor1, 0);
+    }
+    else if (speed > 0) {
+      digitalWrite(motor1R, HIGH);
+      digitalWrite(motor1L, LOW);
+      analogWrite(motor1, abs(speed));
+    }
+    else if (speed < 0) {
+      digitalWrite(motor1R, LOW);
+      digitalWrite(motor1L, HIGH);
+      analogWrite(motor1, abs(speed));
+    }
+  }
+  else if (motorNumber == 2) {
+    if (speed == 0) {
+      analogWrite(motor2, 0);
+    }
+    else if (speed > 0) {
+      digitalWrite(motor2L, HIGH);
+      digitalWrite(motor2R, LOW);
+      analogWrite(motor2, abs(speed));
+    }
+    else if (speed < 0) {
+      digitalWrite(motor2L, LOW);
+      digitalWrite(motor2R, HIGH);
+      analogWrite(motor2, abs(speed));
+    }
+  }
+  
+}
 void serialEvent() {
   if (Serial.available()) {
       data = Serial.readStringUntil('\n');
       if (data == "0") {
         digitalWrite(LED_BUILTIN, LOW);
-        ControlMotors(1, 0);
-        ControlMotors(2, 0);
+        Stop();
+        Serial.println("done");
       }
       else if (data == "1") {
         Serial.println(error);
@@ -65,16 +101,33 @@ void serialEvent() {
         delay(moveTime);
         Serial.println("done");
       }
-      else if (data == "up") {
+      else if (data == "forward") {
         Forward();
         delay(moveTime);
         Serial.println("done");
       }
-      else if (data == "down") {
+      else if (data == "backward") {
         Rotate(180);
         Forward();
         delay(moveTime);
         Serial.println("done");
+      }
+      else if (data == "lMotor") {
+        ControlMotors(1, 255);
+      }
+      else if (data == "rMotor") {
+        ControlMotors(2, 255);
+      }
+      else if (data == "bothF") {
+        ControlMotors(1, 255);
+        ControlMotors(2, 255);
+      }
+      else if (data == "bothB") {
+        ControlMotors(1, -255);
+        ControlMotors(2, -255);
+      }
+      else if (data == "reset") {
+        error = 0;
       }
   }
 }
@@ -87,7 +140,7 @@ void Rotate(int degrees) {
     ControlMotors(1, -255);
     ControlMotors(2, 255);
   }
-  int rotateTimes = (degrees/90);
+  int rotateTimes = (abs(degrees)/90);
   delay(rotateTime*rotateTimes);
 }
 
@@ -95,39 +148,13 @@ void Forward() {
   ControlMotors(1, 255);
   ControlMotors(2, 255);
 }
-void ControlMotors(int motorNumber, int speed) {
-  if (motorNumber == 1) {
-    if (speed == 0) {
-      analogWrite(motor1, 0);
-    }
-    if (speed > 0) {
-      digitalWrite(motor1L, HIGH);
-      digitalWrite(motor1R, LOW);
-      analogWrite(motor1, speed);
-    }
-    if (speed < 0) {
-      digitalWrite(motor1L, LOW);
-      digitalWrite(motor1R, HIGH);
-      analogWrite(motor1, speed);
-    }
-  }
-  if (motorNumber == 2) {
-    if (speed == 0) {
-      analogWrite(motor2, 0);
-    }
-    if (speed > 0) {
-      digitalWrite(motor2L, HIGH);
-      digitalWrite(motor2R, LOW);
-      analogWrite(motor2, speed);
-    }
-    if (speed < 0) {
-      digitalWrite(motor2L, LOW);
-      digitalWrite(motor2R, HIGH);
-      analogWrite(motor2, speed);
-    }
-  }
-  
+void Stop() {
+  ControlMotors(1, 0);
+  ControlMotors(2, 0);
 }
+
+
+
 void Errorcode(char code[]) {
   for (int i = 0; i < strlen(code); i++) {
     int number = code[i];
