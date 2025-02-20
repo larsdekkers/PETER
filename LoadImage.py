@@ -1,7 +1,7 @@
 from PIL import Image
 def Load(imageName : str) -> list:
     "returns a nested list with rbg values [y][x](r,g,b)"
-    image = Image.open(f'YOURPATH/{imageName}') #change path for it to work for you
+    image = Image.open(imageName) #change path for it to work for you
 
     pixels = list(image.getdata()) #get color data in a flat list
     width, height = image.size
