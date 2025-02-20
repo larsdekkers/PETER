@@ -11,7 +11,7 @@ canvasWidth : int = 600
 canvasHeight : int = 680
 
 jsonName = "test.json"
-image = 'C:/Users/2007080801/OneDrive - Rodenborch College/Math/Peter/testwinkel.png'
+image = '' #fill this in yourself
 running = True
 selectedColor = 0
 roomSize = [0,0]
