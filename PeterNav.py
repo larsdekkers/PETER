@@ -5,15 +5,15 @@ test = False
 if test == False :
     import ArduinoTalk
 class Navigation :
-    def __init__(self, mapCanvas : list, startPosition : tuple, startAngle : int, canvas) -> None:
+    def __init__(self, mapCanvas : list, startPosition : tuple, startAngle : int, canvas, json : object) -> None:
         self.mapCanvas : list = mapCanvas #the map
         self.position : list = list(startPosition) #current position
         self.angle : int = startAngle #orientation
         self.canvas = canvas #for drawing on the canvas
         self.lastDrawnPos = self.position
-        
-    
-    def GoTo(self, coords : tuple) -> None:
+        self.json = json
+           
+    def GoToPos(self, coords : tuple) -> None:
         "moves peter to a point on the map"
         currentPosition = self.position 
         endPosition = coords
@@ -111,7 +111,7 @@ class Navigation :
         
         def CreateInstructions(route) -> list:
             'create the final instructions to send to peter'
-            rotation = 0
+            rotation = self.angle
             instructions = []
             changes = []
             lastposition = self.position
@@ -124,47 +124,47 @@ class Navigation :
                 changes.append([xchange, ychange]) #for the later use to make instructions
                 if xchange == 1 : #right
                     if rotation == 0 :
-                        instructions.append("right")
+                        instructions.append("left")
                     elif rotation == 90 :
                         instructions.append("forward")
                     elif rotation == 180 :
-                        instructions.append("left")
+                        instructions.append("right")
                     elif rotation == 270 :
                         instructions.append("backward")
                     rotation = 90
 
                 elif ychange == 1 : #down
                     if rotation == 0 :
-                        instructions.append("backward")
+                        instructions.append("forward")
                     elif rotation == 90 :
                         instructions.append("right")
                     elif rotation == 180 :
-                        instructions.append("forward")
+                        instructions.append("backward")
                     elif rotation == 270 :
                         instructions.append("left")
-                    rotation = 180
+                    rotation = 0
 
                 elif xchange == -1 : #left
                     if rotation == 0 :
-                        instructions.append("left")
+                        instructions.append("right")
                     elif rotation == 90 :
                         instructions.append("backward")
                     elif rotation == 180 :
-                        instructions.append("right")
+                        instructions.append("left")
                     elif rotation == 270 :
                         instructions.append("forward")
                     rotation = 270
 
                 elif ychange == -1 : #up
                     if rotation == 0 :
-                        instructions.append("forward")
+                        instructions.append("backward")
                     elif rotation == 90 :
                         instructions.append("left")
                     elif rotation == 180 :
-                        instructions.append("backward")
+                        instructions.append("forward")
                     elif rotation == 270 :
                         instructions.append("right")
-                    rotation = 0
+                    rotation = 180
                 lastposition = item
             instructions.append("0") #append the final stop
             print(instructions)
@@ -201,6 +201,7 @@ class Navigation :
                 if item == "0" : #this will always be the last item, to stop
                     continue
                 self.position = route[index]
+                
                 self.DrawPeter()
 
 
@@ -214,6 +215,8 @@ class Navigation :
                     case [0,-1] :
                         self.angle = 180
                 index += 1
+                jsonSend = [self.position, self.angle]
+                self.json.Change("peterLocation", jsonSend)
 
         route = FindDirection(currentPosition)
         if route != None : #check if no errors have orrured in the route making

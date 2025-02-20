@@ -14,4 +14,9 @@ class Json :
         if item == None :
             return items
         return items[item]
+    
+    def Change(self, index : str, item : any) -> None:
+        items = self.Open()
+        items[index] = item
+        self.Store(items)
         

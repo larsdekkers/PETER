@@ -1,6 +1,6 @@
 import pygame
 buttonclicktime = 100
-widgets = [] # a list with the position of all widgets and their class [widged, widgettype]
+widgets = [] # a list with the position of all widgets and their class [widget, widgettype]
 textboxActive = False
 
 def CheckForClick(mouseposx : int, mouseposy : int, mousebutton : int) -> None:
@@ -25,7 +25,7 @@ def CheckForClick(mouseposx : int, mouseposy : int, mousebutton : int) -> None:
                 if type(widget[1]).__name__ == "Button" :
                     widget[1].Clicked(True, 3)
 
-def TextInput(input : str) :
+def TextInput(input : str) -> None:
     for widget in widgets :
         if type(widget[1]).__name__ == "InputBox" :
             if widget[1].selected == True :
@@ -50,12 +50,12 @@ class Button :
             self.function2 = buttonfunction2
 
         self.buttonRect = pygame.Rect(position[0], position[1], buttonSize[0],buttonSize[1]) #create the rectangle
-        self.size = (position[0], position[1], buttonSize[0],buttonSize[1])
+        self.size = [position[0], position[1], buttonSize[0], buttonSize[1]]
         self.canvas.DrawRect(self.size, self.color) #draw the background color
         self.Textoperation() #draw the text on screen
         widgets.append((self.buttonRect, self)) # add to the list of all widgets
         
-    def Clicked(self, state : bool, button = 1) :
+    def Clicked(self, state : bool, button = 1) -> None:
         "all events to happen when a click occurs"
         if state and button == 1:
             self.ClickColorChange()
@@ -69,7 +69,7 @@ class Button :
             if self.returnButtonText == True :
                 self.function2(self.text)
             else :
-                self.function2()
+                self.function2() # run the secondary function
     
     def ClickColorChange(self) -> None:
         "change color of the button for a set amount of time"
@@ -101,11 +101,11 @@ class InputBox :
         self.ChangeText("")
         widgets.append((self.textBoxRect, self)) # add to list of all widgets
 
-    def Clicked(self, state) :
+    def Clicked(self, state) -> None:
         'standard function to run all comands on a click'
         self.ChangeState(state) 
     
-    def ChangeState(self, state) :
+    def ChangeState(self, state) -> None:
         if state == False :
             self.canvas.DrawRect(self.textBoxRect, (50,50,50))
             self.canvas.DrawText(self.text, self.textposition, (255,255,255), self.fontsize) # make sure the text doesnt dissapear when unselecting
@@ -114,7 +114,7 @@ class InputBox :
             self.canvas.DrawText(self.text, self.textposition, (255,255,255), self.fontsize) # same with selecting
         self.selected = state
     
-    def ChangeText(self, input : str) :
+    def ChangeText(self, input : str) -> None:
         if input == '\x08' :
             self.text = self.text[:-1] # remove the last character when backspace is pressed
             self.canvas.DrawRect(self.textBoxRect, (70,70,70)) # clear the textbox in order to remove the letter

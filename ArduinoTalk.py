@@ -2,7 +2,7 @@ import serial
 
 arduino = serial.Serial(port='COM3',  baudrate=9600, timeout=0.1)
 
-def Write(rawinput) -> str:
+def Write(rawinput) -> None:
     data = rawinput + "\n"
     arduino.write(bytes(data, 'utf-8'))
 

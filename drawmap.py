@@ -28,7 +28,7 @@ class CanvasMap() :
         "draws a square of the map on screen"
         pygame.draw.rect(self.canvas, self.colors[str(int(self.mapvalues[xcoord][ycoord]))], (xcoord*self.tilesize, ycoord*self.tilesize, self.tilesize, self.tilesize)) #draw the square on the canvas
     
-    def DrawRect(self, rect : object, color : tuple) -> None:
+    def DrawRect(self, rect : list, color : tuple) -> None:
         "draws a rectangle on screen"
         pygame.draw.rect(self.canvas, color, rect)
 

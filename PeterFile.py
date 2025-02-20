@@ -11,42 +11,38 @@ canvasWidth : int = 600
 canvasHeight : int = 680
 
 jsonName = "test.json"
-image = '' #fill this in yourself
+jsonNameMap = "map.json"
+image = 'C:/Users/2007080801/OneDrive - Rodenborch College/Math/Peter/testwinkel.png'
 running = True
 selectedColor = 0
 roomSize = [0,0]
-peterPos = [20,48]
 datafile = {}
+datafileMap = {}
 
 json = JsonHandeler.Json(jsonName)
+jsonMap = JsonHandeler.Json(jsonNameMap)
 
 def Dataread() -> None:
     'get all data out of a jsonfile'
-    global colors
     global datafile
-    global roomMap
-    global roomSize
-    global squaresize
-    global colorNames
-    global peterPos
-    datafile = json.Open()
-    colors = datafile['colors'] #get the colors
-    roomMap = datafile['map']
-    squaresize = (canvasWidth - 50)//len(roomMap[0])
-    roomSize[0] = len(roomMap)*squaresize
-    roomSize[1] = len(roomMap[0])*squaresize
+    datafile = json.Open() #json for most items
+    datafileMap = jsonMap.Open() #json for the map and the colors
+
+    colors = datafileMap['colors'] #get the colors
+    roomMap = datafileMap['map']
     colorNames = datafile["colorNames"]
     peterPos = datafile['peterLocation']
+    StartUp(roomMap, colors, colorNames, peterPos)
 
 def DataStore() -> None:
     'put data into a json file'
     datafile['timesrun'] = datafile['timesrun'] + 1
-    datafile['colors'] = colors
-    datafile['peterLocation'] = navigation.position
+    datafile['peterLocation'] = [navigation.position, navigation.angle]
+    datafile["colorNames"] = colorNames
 
     
-    datafile["colorNames"] = colorNames
-    datafile['map'] = roomMap
+    datafileMap['colors'] = colors
+    datafileMap['map'] = roomMap
 
     itemnumber = 0
     for inputBox in Widgetmanager.widgets :#for all inputboxes
@@ -54,40 +50,44 @@ def DataStore() -> None:
             colorNames[str(SelectedColorTextboxes[itemnumber])] = inputBox[1].text
             itemnumber += 1
     json.Store(datafile)
+    jsonMap.Store(datafileMap)
             
- 
+def StartUp(Map, Colors, colornames, peterpos) -> None:
+    global roomMap
+    global colors
+    global squareSize
+    global roomSize
+    global colorNames
+    global peterPos
 
+    roomMap : list = Map
+    colors : list = Colors
+    peterPos : list = peterpos
+
+    squareSize = (canvasWidth - 50)//len(Map[0])
+    roomSize[0] = len(roomMap)*squareSize #getting the width of the map
+    roomSize[1] = len(roomMap[0])*squareSize # getting the height of the map
+    colorNames : list = colornames
+    
 def Initialisemap() -> None:
     "only run when resetting the map to the original image"
-    global roomMap
-    global roomSize
-    global colors
-    global squaresize
-    global colorNames
-    global datafile
-    global navigation
-    global canvas
-    global peterPos
-    
-
     roomMap = ImageConverter.Load(image)
     colors = ImageConverter.Colors
-    squaresize = (canvasWidth - 50)//len(roomMap[0])
-    roomSize[0] = len(roomMap)*squaresize #getting the width of the map
-    roomSize[1] = len(roomMap[0])*squaresize # getting the height of the map
     colorNames = {} 
     colorNames["0"] = "wall"
     colorNames["1"] = "path"
     colorNames["2"] = "route"
-    peterPos  = [20,48]
+    peterPos  = [[10,10], 180]
     for colorNumber in range(len(colors)-3) :
         colorNumber += 3
         colorNames[f"{colorNumber}"] = ""
 
+    StartUp(roomMap, colors, colorNames, peterPos)
+
 def PixelToSquare(x : int,y : int) -> tuple:
     "converts pixelcoordinates to coordinates on the map"
-    xsquare = x//squaresize
-    ysquare = y//squaresize
+    xsquare = x//squareSize
+    ysquare = y//squareSize
     return xsquare, ysquare
 
 def ChangeMap(item : int, coords : tuple) -> None:
@@ -100,7 +100,7 @@ def MouseDown(mousebutton) -> None:
     x,y = pygame.mouse.get_pos() # get the position of the mouse
     if x <= roomSize[0] and y <= roomSize[1] : # if the mouse is on the map
         xsquare, ysquare = PixelToSquare(x,y) # convert to a position in the grid
-        navigation.GoTo((xsquare,ysquare))
+        navigation.GoToPos((xsquare,ysquare))
         ChangeMap(selectedColor, (xsquare,ysquare)) # change the squares value
 
     Widgetmanager.CheckForClick(x,y, mousebutton) # checks all widgets for clicks
@@ -119,7 +119,8 @@ def ResetMap() -> None:
     Initialisemap()
     canvas.mapvalues = roomMap
     navigation.mapCanvas = roomMap
-    navigation.position = peterPos
+    navigation.position = peterPos[0]
+    navigation.angle = peterPos[1]
     canvas.DrawFullMap()
 
 def ChangeSelectedColor(color) -> None:
@@ -167,15 +168,17 @@ def ChangeItemTextbox(state : bool, text) -> None:
 
     textbox.text = colorNames[f"{color}"] #change the textbox to have the correct text
     textbox.Clicked(False) # deselect and update the textbox
-    
+
+def GoToShelf(shelfName : str) -> None:
+   colorNames
 Dataread()
 #Initialisemap()
-canvas = drawmap.CanvasMap((canvasWidth, canvasHeight), roomSize, squaresize, colors, roomMap) # the canvas
-navigation = PeterNav.Navigation(roomMap, peterPos, 0, canvas)
-ChangeMap(0, peterPos)
+canvas = drawmap.CanvasMap((canvasWidth, canvasHeight), roomSize, squareSize, colors, roomMap) # the canvas
+navigation = PeterNav.Navigation(roomMap, peterPos[0], peterPos[1], canvas, json)
+ChangeMap(0, peterPos[0])
 canvas.DrawFullMap()
 resetButton = Widgetmanager.Button((canvasWidth-50,canvasHeight-50), (50,50), (255,0,0), canvas, ResetMap, "reset")
-colorRect = pygame.Rect(canvasWidth-50, 0, 50, 50) # the rectangle that shows the selected color
+colorRect = [canvasWidth-50, 0, 50, 50] # the rectangle that shows the selected color
 
 canvas.DrawRect(colorRect, colors[f"{selectedColor}"]) # drawing the color
 canvas.DrawText("use + and - to draw different colors", (canvasWidth//2-180, roomSize[1]+25), (255,255,255)) # drawing text with instructions
@@ -197,8 +200,7 @@ while running :
     event = canvas.UpdateScreen()
     if event == None :
         continue
-    print(event.type)
-    if event.type == 32787:
+    if event.type == 32787: #check for quit
         running = False
 
     #check all mouse inputs
