@@ -1,7 +1,7 @@
 import math
 import pygame
 
-test = False
+test = True
 if test == False :
     import ArduinoTalk
 class Navigation :
@@ -12,6 +12,25 @@ class Navigation :
         self.canvas = canvas #for drawing on the canvas
         self.lastDrawnPos = self.position
         self.json = json
+        if test == False :
+            motorSpeed = 110 #between 0 and 255
+            forwardTime = 260 #in ms
+            forwardStartTime = 400 #in ms
+            forwardStopTime = 170 #in ms
+            rotateTimeL = 600 #in ms
+            rotateTimeR = 710 #in ms
+            startTime = 100 #in ms
+            motorAdjustment = 96 #in %
+            sensStopDistance = 100 #in cm
+            ArduinoTalk.Write(f"s{motorSpeed}")
+            ArduinoTalk.Write(f"ft{forwardStartTime}")
+            ArduinoTalk.Write(f"fp{forwardStopTime}")
+            ArduinoTalk.Write(f"ff{forwardTime}")
+            ArduinoTalk.Write(f"rl{rotateTimeL}")
+            ArduinoTalk.Write(f"rr{rotateTimeR}")
+            ArduinoTalk.Write(f"a{startTime}")
+            ArduinoTalk.Write(f"m{motorAdjustment}")
+            ArduinoTalk.Write(f"d{sensStopDistance}")
            
     def GoToPos(self, coords : tuple) -> None:
         "moves peter to a point on the map"
@@ -121,52 +140,102 @@ class Navigation :
                 itemnumber += 1
                 xchange = item[0] - lastposition[0]
                 ychange = item[1] - lastposition[1]
-                changes.append([xchange, ychange]) #for the later use to make instructions
                 if xchange == 1 : #right
                     if rotation == 0 :
                         instructions.append("left")
-                    elif rotation == 90 :
-                        instructions.append("forward")
+                        changes.append([0, 0])
+                    elif rotation == 90 : 
+                        if len(instructions) != 0 :
+                            instructions.append("forward")
                     elif rotation == 180 :
                         instructions.append("right")
+                        changes.append([0, 0])
                     elif rotation == 270 :
                         instructions.append("backward")
+                        changes.append([0, 0])
+                    if rotation != 90 :
+                        try :
+                            instructions.pop(-2)
+                        except IndexError :
+                            pass
+                        else :
+                            instructions.insert(-1, "forwardStop")
+                        instructions.append("forwardStart")
                     rotation = 90
 
                 elif ychange == 1 : #down
-                    if rotation == 0 :
-                        instructions.append("forward")
-                    elif rotation == 90 :
+                    if rotation == 0 : 
+                        if len(instructions) != 0 :
+                            instructions.append("forward")
+                    if rotation == 90 :
                         instructions.append("right")
+                        changes.append([0, 0])
                     elif rotation == 180 :
                         instructions.append("backward")
+                        changes.append([0, 0])
                     elif rotation == 270 :
                         instructions.append("left")
+                        changes.append([0, 0])
+                    if rotation != 0 :
+                        try :
+                            instructions.pop(-2)
+                        except IndexError :
+                            pass
+                        else : 
+                            instructions.insert(-1, "forwardStop")
+                        instructions.append("forwardStart")
                     rotation = 0
 
                 elif xchange == -1 : #left
                     if rotation == 0 :
                         instructions.append("right")
+                        changes.append([0, 0])
                     elif rotation == 90 :
                         instructions.append("backward")
+                        changes.append([0, 0])
                     elif rotation == 180 :
                         instructions.append("left")
+                        changes.append([0, 0])
                     elif rotation == 270 :
-                        instructions.append("forward")
+                        if len(instructions) != 0 :
+                            instructions.append("forward")
+                    if rotation != 270 :
+                        try :
+                            instructions.pop(-2)
+                        except IndexError :
+                            pass
+                        else :
+                            instructions.insert(-1, "forwardStop")
+                        instructions.append("forwardStart")
                     rotation = 270
 
                 elif ychange == -1 : #up
                     if rotation == 0 :
                         instructions.append("backward")
+                        changes.append([0, 0])
                     elif rotation == 90 :
                         instructions.append("left")
+                        changes.append([0, 0])
                     elif rotation == 180 :
-                        instructions.append("forward")
+                        if len(instructions) != 0 :
+                            instructions.append("forward")
                     elif rotation == 270 :
                         instructions.append("right")
+                        changes.append([0, 0])
+                    if rotation != 180 :
+                        try :
+                            instructions.pop(-2)
+                        except IndexError :
+                            pass
+                        else :
+                            instructions.insert(-1, "forwardStop")
+                        instructions.append("forwardStart")
                     rotation = 180
+                if len(instructions) == 0 :
+                    instructions.append("forwardStart")
                 lastposition = item
-            instructions.append("0") #append the final stop
+                changes.append([xchange, ychange]) #for the later use to make instructions
+            instructions[-1] = "forwardStop" #append the final stop
             print(instructions)
             return instructions, changes
             
@@ -192,7 +261,7 @@ class Navigation :
                     ArduinoTalk.Write(item)
                     response = ArduinoTalk.Read()
                 else :
-                    pygame.time.wait(1000)
+                    pygame.time.wait(400)
                     response = "done"
                 
                 if response != "done" : #if the response is wrong give an error
@@ -200,12 +269,15 @@ class Navigation :
                     break
                 if item == "0" : #this will always be the last item, to stop
                     continue
-                self.position = route[index]
+
+                if item == "forward" or item == "forwardStart" or item == "forwardStop":
+                    self.position = route[index]
+                    index += 1
+                    self.DrawPeter()
                 
-                self.DrawPeter()
 
 
-                match changes[index] : # set the angle of peter to match the one on the map
+                match changes[index-1] : # set the angle of peter to match the one on the map
                     case [1,0] :
                         self.angle = 90
                     case [0,1] :
@@ -214,7 +286,6 @@ class Navigation :
                         self.angle = 270
                     case [0,-1] :
                         self.angle = 180
-                index += 1
                 jsonSend = [self.position, self.angle]
                 self.json.Change("peterLocation", jsonSend)
 

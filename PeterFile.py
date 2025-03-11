@@ -12,7 +12,7 @@ canvasHeight : int = 680
 
 jsonName = "test.json"
 jsonNameMap = "map.json"
-image = 'C:/Users/2007080801/OneDrive - Rodenborch College/Math/Peter/testwinkel.png'
+image = "C:/Users/2007080801/OneDrive - Rodenborch College/Math/Peter/Presentatieavond lokaal.png"
 running = True
 selectedColor = 0
 roomSize = [0,0]
@@ -46,13 +46,15 @@ def DataStore() -> None:
 
     itemnumber = 0
     for inputBox in Widgetmanager.widgets :#for all inputboxes
+        if itemnumber == 1 :
+            break
         if type(inputBox[1]).__name__ == "InputBox" :
             colorNames[str(SelectedColorTextboxes[itemnumber])] = inputBox[1].text
             itemnumber += 1
     json.Store(datafile)
     jsonMap.Store(datafileMap)
             
-def StartUp(Map, Colors, colornames, peterpos) -> None:
+def StartUp(Map : list, Colors : list, colornames : list, peterpos : list) -> None:
     global roomMap
     global colors
     global squareSize
@@ -60,14 +62,14 @@ def StartUp(Map, Colors, colornames, peterpos) -> None:
     global colorNames
     global peterPos
 
-    roomMap : list = Map
-    colors : list = Colors
-    peterPos : list = peterpos
+    roomMap = Map
+    colors = Colors
+    peterPos = peterpos
 
     squareSize = (canvasWidth - 50)//len(Map[0])
     roomSize[0] = len(roomMap)*squareSize #getting the width of the map
     roomSize[1] = len(roomMap[0])*squareSize # getting the height of the map
-    colorNames : list = colornames
+    colorNames = colornames
     
 def Initialisemap() -> None:
     "only run when resetting the map to the original image"
@@ -77,7 +79,8 @@ def Initialisemap() -> None:
     colorNames["0"] = "wall"
     colorNames["1"] = "path"
     colorNames["2"] = "route"
-    peterPos  = [[10,10], 180]
+    peterPos  = [[10,2], 180]
+    roomMap[10][2] = 0
     for colorNumber in range(len(colors)-3) :
         colorNumber += 3
         colorNames[f"{colorNumber}"] = ""
@@ -95,7 +98,7 @@ def ChangeMap(item : int, coords : tuple) -> None:
     roomMap[coords[0]][coords[1]] = item #change the map list 
     canvas.DrawSquare(coords[0], coords[1]) # draw the new square
 
-def MouseDown(mousebutton) -> None:
+def MouseDown(mousebutton : int) -> None:
     "all events to happen when mousebutton 1 is down"
     x,y = pygame.mouse.get_pos() # get the position of the mouse
     if x <= roomSize[0] and y <= roomSize[1] : # if the mouse is on the map
@@ -121,9 +124,10 @@ def ResetMap() -> None:
     navigation.mapCanvas = roomMap
     navigation.position = peterPos[0]
     navigation.angle = peterPos[1]
+    
     canvas.DrawFullMap()
 
-def ChangeSelectedColor(color) -> None:
+def ChangeSelectedColor(color : int) -> None:
     "changes the selected color and displays it on the canvas"
     global selectedColor
     color = max(color, 0) # make sure it cant go below 0
@@ -131,13 +135,13 @@ def ChangeSelectedColor(color) -> None:
     selectedColor = color
     canvas.DrawRect(colorRect, colors[f"{color}"])
 
-def ChangeColorItemLower(text) -> None:
+def ChangeColorItemLower(text : str) -> None:
     ChangeItemTextbox(False, text)
 
-def ChangeColorItemHigher(text) -> None:
+def ChangeColorItemHigher(text : str) -> None:
     ChangeItemTextbox(True, text)
 
-def ChangeItemTextbox(state : bool, text) -> None:
+def ChangeItemTextbox(state : bool, text : str) -> None:
     "changes the item of the textboxes when clicked on them"
     textboxnumber = len(text) # this indicates what textbox to use
     if textboxnumber == 0 :
@@ -146,12 +150,8 @@ def ChangeItemTextbox(state : bool, text) -> None:
     elif textboxnumber == 1 :
         textboxcolor = textbox2Color
         textbox = textbox2
-    elif textboxnumber == 2 :
-        textboxcolor = textbox3Color
-        textbox = textbox3
-    elif textboxnumber == 3 :
-        textboxcolor = textbox4Color
-        textbox = textbox4
+
+
     color = textboxcolor.color # get the color of the textbox
     index = int(list(colors.keys())[list(colors.values()).index(color)]) # find the colorindex
     
@@ -169,10 +169,12 @@ def ChangeItemTextbox(state : bool, text) -> None:
     textbox.text = colorNames[f"{color}"] #change the textbox to have the correct text
     textbox.Clicked(False) # deselect and update the textbox
 
-def GoToShelf(shelfName : str) -> None:
-   colorNames
+    
+            
+    
+    
 Dataread()
-#Initialisemap()
+Initialisemap()
 canvas = drawmap.CanvasMap((canvasWidth, canvasHeight), roomSize, squareSize, colors, roomMap) # the canvas
 navigation = PeterNav.Navigation(roomMap, peterPos[0], peterPos[1], canvas, json)
 ChangeMap(0, peterPos[0])
@@ -181,21 +183,16 @@ resetButton = Widgetmanager.Button((canvasWidth-50,canvasHeight-50), (50,50), (2
 colorRect = [canvasWidth-50, 0, 50, 50] # the rectangle that shows the selected color
 
 canvas.DrawRect(colorRect, colors[f"{selectedColor}"]) # drawing the color
-canvas.DrawText("use + and - to draw different colors", (canvasWidth//2-180, roomSize[1]+25), (255,255,255)) # drawing text with instructions
+canvas.DrawText("click the color to change item", (canvasWidth//2-180, roomSize[1]+25), (255,255,255)) # drawing text with instructions
 
 textbox1 = Widgetmanager.InputBox((30, canvasHeight-80), (150,30), canvas, 13, colorNames["0"]) # all textboxes for handeling items
-textbox2 = Widgetmanager.InputBox((30, canvasHeight-40), (150,30), canvas, 13, colorNames["1"])
-textbox3 = Widgetmanager.InputBox((270, canvasHeight-80), (150,30), canvas, 13, colorNames["2"])
-textbox4 = Widgetmanager.InputBox((270, canvasHeight-40), (150,30), canvas, 13, colorNames["3"])
+textbox2 = Widgetmanager.InputBox((270, canvasHeight-80), (150,30), canvas, 13, colorNames["1"])
 
 textbox1Color = Widgetmanager.Button((180,canvasHeight-80), (30,30), colors["0"], canvas, ChangeColorItemLower, "", ChangeColorItemHigher, True) # all colors next to the textboxes for items
-textbox2Color = Widgetmanager.Button((180,canvasHeight-40), (30,30), colors["1"], canvas, ChangeColorItemLower, " ", ChangeColorItemHigher, True) # text is for checking the corresponding textbox
-textbox3Color = Widgetmanager.Button((420,canvasHeight-80), (30,30), colors["2"], canvas, ChangeColorItemLower, "  ", ChangeColorItemHigher, True)
-textbox4Color = Widgetmanager.Button((420,canvasHeight-40), (30,30), colors["3"], canvas, ChangeColorItemLower, "   ", ChangeColorItemHigher, True)
+textbox2Color = Widgetmanager.Button((420,canvasHeight-80), (30,30), colors["1"], canvas, ChangeColorItemLower, " ", ChangeColorItemHigher, True) # text is for checking the corresponding textbox
 
 
-
-SelectedColorTextboxes = [0,1,2,3]
+SelectedColorTextboxes = [0,1]
 while running :
     event = canvas.UpdateScreen()
     if event == None :

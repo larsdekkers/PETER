@@ -8,12 +8,17 @@ int sensOut = 5;
 int sensIn = 6;
 
 int error = 0;
-int rotateTime = 1000; // time in ms
-int moveTime = 1000; // time in ms
-int motorSpeed = 255; //from 0 to 255
-int sensStopDistance = 30; // in cm
+int rotateTimeL = 600; // time in ms to rotate left
+int rotateTimeR = 710; // time in ms to rotate right
+
+int moveTime = 260; // time in ms
+int moveTimeStart = 260;
+int moveTimeStop = 260;
+
+int motorSpeed = 120; //from 0 to 255
+int sensStopDistance = 70; // in cm
 int startTime = 100; // time in ms
-int motorAdjustment = 80; // in % of total
+int motorAdjustment = 97; // in % of total
 
 String data;
 float sensDuration, sensDistance; // in microsec and cm
@@ -30,22 +35,8 @@ void setup() { //runs on init
   pinMode(sensIn, INPUT);
   Serial.begin(9600);
 }
-void loop() { // runs continualy
- 	digitalWrite(sensOut, LOW);  
-	delayMicroseconds(2);  
-	digitalWrite(sensOut, HIGH);  
-	delayMicroseconds(20);  
-	digitalWrite(sensOut, LOW);  
- 
- sensDuration = pulseIn(sensIn, HIGH); // getting the time that it took for the signal
- if (sensDuration < 58000) { // ignore all items that timed out
-  sensDistance = (sensDuration*0.0343)/2; //speed of sound in cm/microSec
-  if (sensDistance < sensStopDistance) { // if something is too close
-    Stop();
-    error = 1; 
-  }
- }
- delay(30);
+void loop() {
+
 }
 void ControlMotors(int motorNumber, int speed) { //running the motors
   if (motorNumber == 1) { // left motor
@@ -94,27 +85,40 @@ void serialEvent() { // runs every time that anything happens in the Serial moni
         Serial.println(error);
       }
       else if (data == "forward") { // moving forward
-        Forward();
+        Forward(moveTime);
         Serial.println("done");
       }
       else if (data == "right") { // rotating right
-        Rotate(90);
+        Rotate(-90);
+        Stop();
+        delay(500);
         Serial.println("done");
       }
       else if (data == "left") { // rotating left
-        Rotate(-90);
+        Rotate(90);
+        Stop();
+        delay(500);
         Serial.println("done");
       }
       else if (data == "backward") { // rotating backward
-        Rotate(180);
+        Rotate(90);
+        Stop();
+        delay(500);
+        Rotate(90);
+        Stop();
+        delay(500);
         Serial.println("done");
       }
-      else if (data == "start") {
+      else if (data == "forwardStart") { // initial high power for starting
         Start(3, 1, 1);
-        ControlMotors(1, motorSpeed);
-        ControlMotors(2, motorSpeed);
-        delay(moveTime - startTime/2);
-        Stop();
+        Forward(moveTimeStart);
+        Serial.println("done");
+      }
+      else if (data == "forwardStop") {
+        Forward(moveTimeStop);
+        Stop(); 
+        delay(500);
+        Serial.println("done");
       }
       else if (data == "lMotor") { // moving left motor forward
         ControlMotors(1, motorSpeed);
@@ -136,25 +140,37 @@ void serialEvent() { // runs every time that anything happens in the Serial moni
       else if (data[0] == 's') { //changing motorspeed
         motorSpeed = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
       }
-      else if (data[0] == 't') { // changing movetime
-        moveTime = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
+      else if (data[0] == 'f') { // changing moveTime
+        if (data[1] == 't') {
+        moveTimeStart = atoi(data.substring(2).c_str());
+        }
+        else if (data[1] == 'p') {
+         moveTimeStop = atoi(data.substring(2).c_str());
+        }
+        else {
+        moveTime = atoi(data.substring(2).c_str()); // convert the rest of the string to an int
+        }
       }
-      else if (data[0] == 'r') { // changing rotatetime
-        rotateTime = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
+      else if (data[0] == 'r') { // changing rotateTime
+        if (data[1] == 'l') { // left time
+          rotateTimeL = atoi(data.substring(2).c_str());
+        }
+        else { // right time
+          rotateTimeR = atoi(data.substring(2).c_str()); // convert the rest of the string to an int
+        }
       }
-      else if (data[0] == 'a') {
+      else if (data[0] == 'a') { // changing startTime
         startTime = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
       }
-      else if (data[0] == 'm') {
+      else if (data[0] == 'm') { // changing motorAdjustment
         motorAdjustment = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
       }
-      else if (data[0] == 'd') {
+      else if (data[0] == 'd') { // sensStopDistance
         sensStopDistance = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
       }
-
   }
 }
-void Start(int motorNumber, int direction, int direction2) {
+void Start(int motorNumber, int direction, int direction2) { // small high voltage to start motors
   if (motorNumber == 3) {
     ControlMotors(1, 255*direction);
     ControlMotors(2, 255*direction2);
@@ -165,43 +181,51 @@ void Start(int motorNumber, int direction, int direction2) {
   delay(startTime);
 }
 void Rotate(int degrees) { //rotating peter using both weels
-  if (degrees > 0) { // rotating right
+  int rotateTimes = (abs(degrees)/90); //calculate the time needed to rotate
+  if (degrees > 0) { // rotating left
     Start(3, 1, -1);
     ControlMotors(1, motorSpeed);
     ControlMotors(2, -motorSpeed);
+    delay(rotateTimeL*rotateTimes); // wait until rotation is complete
   }
-  if (degrees < 0) { // rotating left
+  if (degrees < 0) { // rotating right
     Start(3, -1, 1);
     ControlMotors(1, -motorSpeed);
     ControlMotors(2, motorSpeed);
+    delay(rotateTimeR*rotateTimes); // wait until rotation is complete
   }
-  int rotateTimes = (abs(degrees)/90); //calculate the time needed to rotate
-  delay(rotateTime*rotateTimes); // wait until rotation is complete
 }
-void Forward() { // moving both motors forward
+void Forward(int time) { // moving both motors forward
   ControlMotors(1, motorSpeed);
   ControlMotors(2, motorSpeed);
-  delay(moveTime);
+  int times = time/40;
+  int timeForEach = time/times;
+  for (int i = 0; i < times; i++) {
+    delay(timeForEach);
+    ReadSensor();
+  }
   Stop();
 }
 void Stop() { //stopping both motors
   ControlMotors(1, 0);
   ControlMotors(2, 0);
 }
-void Errorcode(char code[]) {
-  for (int i = 0; i < strlen(code); i++) {
-    int number = code[i];
-    Serial.println(number);
-    if (number == 48) { // 48 is de standaard code voor 0
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(500);
-    }
-    else if (number == 49) { // 49 is de standaard code voor 1
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(1000);
-    }
-    digitalWrite(LED_BUILTIN, LOW);
-    delay(1000);
+void ReadSensor() { // checking if something is nearby
+  digitalWrite(sensOut, LOW);  
+	delayMicroseconds(2);  
+	digitalWrite(sensOut, HIGH);  
+	delayMicroseconds(20);  
+	digitalWrite(sensOut, LOW);  
+ 
+ sensDuration = pulseIn(sensIn, HIGH); // getting the time that it took for the signal
+ if (sensDuration < 58000) { // ignore all items that timed out
+  sensDistance = (sensDuration*0.0343)/2; //speed of sound in cm/microSec
+  if (sensDistance < sensStopDistance) { // if something is too close
+    Stop();
+    digitalWrite(LED_BUILTIN, HIGH);
+    error = 1; 
   }
+ }
 }
+
 
