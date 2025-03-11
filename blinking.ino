@@ -12,6 +12,9 @@ int rotateTime = 1000; // time in ms
 int moveTime = 1000; // time in ms
 int motorSpeed = 255; //from 0 to 255
 int sensStopDistance = 30; // in cm
+int startTime = 100; // time in ms
+int motorAdjustment = 80; // in % of total
+
 String data;
 float sensDuration, sensDistance; // in microsec and cm
 
@@ -50,14 +53,16 @@ void ControlMotors(int motorNumber, int speed) { //running the motors
       analogWrite(motor1, 0);
     }
     else if (speed > 0) { // run the motor forward
-      digitalWrite(motor1R, HIGH);
-      digitalWrite(motor1L, LOW);
-      analogWrite(motor1, speed); //run it at set speed
-    }
-    else if (speed < 0) { // run the motor backward
       digitalWrite(motor1R, LOW);
       digitalWrite(motor1L, HIGH);
-      analogWrite(motor1, abs(speed)); // use the positive value of speed
+      int motorspeed = speed*(motorAdjustment/100.0);
+      analogWrite(motor1, motorspeed); //run it at set speed
+    }
+    else if (speed < 0) { // run the motor backward
+      digitalWrite(motor1R, HIGH);
+      digitalWrite(motor1L, LOW);
+      int motorspeed = abs(speed)*(motorAdjustment/100.0);
+      analogWrite(motor1, motorspeed); // use the positive value of speed
     }
   }
   else if (motorNumber == 2) { // right motor
@@ -65,13 +70,13 @@ void ControlMotors(int motorNumber, int speed) { //running the motors
       analogWrite(motor2, 0);
     }
     else if (speed > 0) { // run the motor forward
-      digitalWrite(motor2L, HIGH);
-      digitalWrite(motor2R, LOW);
+      digitalWrite(motor2L, LOW);
+      digitalWrite(motor2R, HIGH);
       analogWrite(motor2, speed);
     }
     else if (speed < 0) { // run the motor backward
-      digitalWrite(motor2L, LOW);
-      digitalWrite(motor2R, HIGH);
+      digitalWrite(motor2L, HIGH);
+      digitalWrite(motor2R, LOW);
       analogWrite(motor2, abs(speed));
     }
   } 
@@ -88,24 +93,28 @@ void serialEvent() { // runs every time that anything happens in the Serial moni
       else if (data == "1") { // use for checking if something is wrong
         Serial.println(error);
       }
-      else if (data == "right") { // rotating right and forward
-        Rotate(90);
-        Forward();
-        Serial.println("done");
-      }
-      else if (data == "left") { // rotating left and forward
-        Rotate(-90);
-        Forward();
-        Serial.println("done");
-      }
       else if (data == "forward") { // moving forward
         Forward();
         Serial.println("done");
       }
-      else if (data == "backward") { // moving backward
-        Rotate(180);
-        Forward();
+      else if (data == "right") { // rotating right
+        Rotate(90);
         Serial.println("done");
+      }
+      else if (data == "left") { // rotating left
+        Rotate(-90);
+        Serial.println("done");
+      }
+      else if (data == "backward") { // rotating backward
+        Rotate(180);
+        Serial.println("done");
+      }
+      else if (data == "start") {
+        Start(3, 1, 1);
+        ControlMotors(1, motorSpeed);
+        ControlMotors(2, motorSpeed);
+        delay(moveTime - startTime/2);
+        Stop();
       }
       else if (data == "lMotor") { // moving left motor forward
         ControlMotors(1, motorSpeed);
@@ -133,15 +142,36 @@ void serialEvent() { // runs every time that anything happens in the Serial moni
       else if (data[0] == 'r') { // changing rotatetime
         rotateTime = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
       }
+      else if (data[0] == 'a') {
+        startTime = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
+      }
+      else if (data[0] == 'm') {
+        motorAdjustment = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
+      }
+      else if (data[0] == 'd') {
+        sensStopDistance = atoi(data.substring(1).c_str()); // convert the rest of the string to an int
+      }
 
   }
 }
+void Start(int motorNumber, int direction, int direction2) {
+  if (motorNumber == 3) {
+    ControlMotors(1, 255*direction);
+    ControlMotors(2, 255*direction2);
+  }
+  else {
+    ControlMotors(motorNumber, 255*direction);
+  }
+  delay(startTime);
+}
 void Rotate(int degrees) { //rotating peter using both weels
   if (degrees > 0) { // rotating right
+    Start(3, 1, -1);
     ControlMotors(1, motorSpeed);
     ControlMotors(2, -motorSpeed);
   }
   if (degrees < 0) { // rotating left
+    Start(3, -1, 1);
     ControlMotors(1, -motorSpeed);
     ControlMotors(2, motorSpeed);
   }
